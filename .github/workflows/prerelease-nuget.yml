@@ -9,11 +9,14 @@ jobs:
     steps:
     - name: Checkout repository
       uses: actions/checkout@v1
+    - name: Checkout models directory
+      run: cd AdvertApi.Models
+      shell: bash
     - name: Build with dotnet
-      run: |
-            cd AdvertApi.Models
-            dotnet build --configuration Release --version-suffix prerelease-$(date +%Y%m%d%H%M%S)
-            done
+      run: dotnet build --configuration Release --version-suffix prerelease-$(date +%Y%m%d%H%M%S)
+      shell: bash
+    - name: Checkout main directory
+      run: cd ..
       shell: bash
     - name: Publish nuget
       run: |
