@@ -10,6 +10,7 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v1
     - name: Build with dotnet
+      uses: ./WebAdvert.AdvertApi/AdvertApi.Models
       run: dotnet build --configuration Release --version-suffix prerelease-$(date +%Y%m%d%H%M%S)
       shell: bash
     - name: Publish nuget
