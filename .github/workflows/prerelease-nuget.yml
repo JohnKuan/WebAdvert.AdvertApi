@@ -13,7 +13,7 @@ jobs:
       run: |
             cd AdvertApi.Models
             dotnet build --configuration Release --version-suffix prerelease-$(date +%Y%m%d%H%M%S)
-            cd ..
+            cd ../
             done
       shell: bash
     - name: Publish nuget
