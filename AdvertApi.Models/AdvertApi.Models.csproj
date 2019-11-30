@@ -1,0 +1,11 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netcoreapp3.0</TargetFramework>
+    <Authors>John Kuan</Authors>
+    <Company>Dot Dynamics</Company>
+    <Product>Web Advert Microservices</Product>
+    <PackageProjectUrl>https://github.com/JohnKuan/WebAdvert.AdvertApi</PackageProjectUrl>
+  </PropertyGroup>
+
+</Project>
