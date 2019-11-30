@@ -1,3 +1,4 @@
+using AdvertApi.HealthChecks;
 using AdvertApi.Services;
 using AutoMapper;
 using Microsoft.AspNetCore.Builder;
@@ -22,6 +23,9 @@ namespace AdvertApi
         {
             services.AddAutoMapper(typeof(Startup));
             services.AddTransient<IAdvertStorageService, DynamoDBAdvertStorage>();
+            services.AddTransient<StorageHealthCheck>();
+            services.AddHealthChecks()
+                    .AddCheck<StorageHealthCheck>("example_health_check");
             services.AddRazorPages();
         }
 
@@ -36,9 +40,9 @@ namespace AdvertApi
             app.UseRouting();
 
             app.UseAuthorization();
-
             app.UseEndpoints(endpoints =>
             {
+                endpoints.MapHealthChecks("/health");
                 endpoints.MapControllerRoute("default", "{controller=Home}/{action=Index}");
             });
         }
