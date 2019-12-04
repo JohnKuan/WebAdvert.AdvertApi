@@ -1,6 +1,10 @@
 ﻿using AdvertApi.Models;
+using AdvertApi.Models.Messages;
 using AdvertApi.Services;
+using Amazon.SimpleNotificationService;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Configuration;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
@@ -13,11 +17,15 @@ namespace AdvertApi.Controllers
     [Route("api/v1/adverts")]
     public class AdvertController : ControllerBase
     {
+        private readonly IConfiguration _configuration;
         private readonly IAdvertStorageService _advertStorageService;
+        private readonly IAmazonSimpleNotificationService _simpleNotificationService;
 
-        public AdvertController(IAdvertStorageService advertStorageService)
+        public AdvertController(IConfiguration configuration, IAdvertStorageService advertStorageService, IAmazonSimpleNotificationService simpleNotificationService)
         {
+            _configuration = configuration;
             _advertStorageService = advertStorageService;
+            _simpleNotificationService = simpleNotificationService;
         }
 
         [HttpPost]
@@ -29,7 +37,7 @@ namespace AdvertApi.Controllers
             string recordId;
             try
             {
-                recordId = await _advertStorageService.Add(model);
+                recordId = await _advertStorageService.AddAsync(model);
             }
             catch (KeyNotFoundException)
             {
@@ -52,7 +60,8 @@ namespace AdvertApi.Controllers
         {
             try
             {
-                await _advertStorageService.Confirm(model);
+                await _advertStorageService.ConfirmAsync(model);
+                await RaiseAdvertConfirmedMessage(model);
             }
             catch (KeyNotFoundException)
             {
@@ -64,6 +73,19 @@ namespace AdvertApi.Controllers
                 
             }
             return new OkResult();
+        }
+
+        private async Task RaiseAdvertConfirmedMessage(ConfirmAdvertModel model)
+        {
+            var topicArn = _configuration.GetValue<string>("TopicArn");
+            var dbModel = await _advertStorageService.GetByIdAsync(model.Id);
+            var message = new AdvertConfirmedMessage 
+            {
+                Id = model.Id,
+                Title = dbModel.Title
+            };
+            var messageJson = JsonConvert.SerializeObject(message);
+            await _simpleNotificationService.PublishAsync(topicArn, messageJson);
         }
     }
 }

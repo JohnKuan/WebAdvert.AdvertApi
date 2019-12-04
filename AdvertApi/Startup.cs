@@ -1,5 +1,7 @@
 using AdvertApi.HealthChecks;
 using AdvertApi.Services;
+using Amazon.DynamoDBv2;
+using Amazon.SimpleNotificationService;
 using AutoMapper;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -21,11 +23,14 @@ namespace AdvertApi
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
+            services.AddDefaultAWSOptions(Configuration.GetAWSOptions());
+            services.AddAWSService<IAmazonDynamoDB>();
+            services.AddAWSService<IAmazonSimpleNotificationService>();
             services.AddAutoMapper(typeof(Startup));
             services.AddTransient<IAdvertStorageService, DynamoDBAdvertStorage>();
             services.AddTransient<StorageHealthCheck>();
             services.AddHealthChecks()
-                    .AddCheck<StorageHealthCheck>("example_health_check");
+                    .AddCheck<StorageHealthCheck>("Storage");
             services.AddRazorPages();
         }
 
@@ -36,7 +41,7 @@ namespace AdvertApi
             {
                 app.UseDeveloperExceptionPage();
             }
-
+            //app.UseHealthChecks("/health");
             app.UseRouting();
 
             app.UseAuthorization();

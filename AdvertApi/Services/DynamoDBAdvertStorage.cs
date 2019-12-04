@@ -4,6 +4,7 @@ using Amazon.DynamoDBv2.DataModel;
 using AutoMapper;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace AdvertApi.Services
@@ -11,13 +12,15 @@ namespace AdvertApi.Services
     public class DynamoDBAdvertStorage : IAdvertStorageService
     {
         private readonly IMapper _mapper;
+        private readonly IAmazonDynamoDB _client;
 
-        public DynamoDBAdvertStorage(IMapper mapper)
+        public DynamoDBAdvertStorage(IMapper mapper, IAmazonDynamoDB client)
         {
             _mapper = mapper;
+            _client = client;
         }
 
-        public async Task<string> Add(AdvertModel model)
+        public async Task<string> AddAsync(AdvertModel model)
         {
             // add validation in production
             var dbModel = _mapper.Map<AdvertDbModel>(model);
@@ -37,14 +40,13 @@ namespace AdvertApi.Services
 
         public async Task<bool> CheckHealthAsync()
         {
-            using (var client = new AmazonDynamoDBClient())
-            {
-                var tableData = await client.DescribeTableAsync("Adverts");
-                return string.Compare(tableData.Table.TableStatus, "active", true) == 0;
-            }
+            Console.WriteLine("Health checking...");
+            //using var client = new AmazonDynamoDBClient();
+            var tableData = await _client.DescribeTableAsync("Adverts");
+            return string.Compare(tableData.Table.TableStatus, "active", true) == 0;
         }
 
-        public async Task Confirm(ConfirmAdvertModel model)
+        public async Task ConfirmAsync(ConfirmAdvertModel model)
         {
             using (var client = new AmazonDynamoDBClient())
             {
@@ -66,6 +68,33 @@ namespace AdvertApi.Services
                     }
                 }
             }
+        }
+
+        public async Task<List<AdvertModel>> GetAllAsync()
+        {
+            using (var client = new AmazonDynamoDBClient())
+            {
+                using (var context = new DynamoDBContext(client))
+                {
+                    var scanResult =
+                        await context.ScanAsync<AdvertDbModel>(new List<ScanCondition>()).GetNextSetAsync();
+                    return scanResult.Select(item => _mapper.Map<AdvertModel>(item)).ToList();
+                }
+            }
+        }
+
+        public async Task<AdvertModel> GetByIdAsync(string id)
+        {
+            using (var client = new AmazonDynamoDBClient())
+            {
+                using (var context = new DynamoDBContext(client))
+                {
+                    var dbModel = await context.LoadAsync<AdvertDbModel>(id);
+                    if (dbModel != null) return _mapper.Map<AdvertModel>(dbModel);
+                }
+            }
+
+            throw new KeyNotFoundException();
         }
     }
 }
