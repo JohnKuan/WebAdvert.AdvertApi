@@ -2,6 +2,7 @@
 using AdvertApi.Models.Messages;
 using AdvertApi.Services;
 using Amazon.SimpleNotificationService;
+using Microsoft.AspNetCore.Cors;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Newtonsoft.Json;
@@ -70,7 +71,6 @@ namespace AdvertApi.Controllers
             catch (Exception exception)
             {
                 return StatusCode(500, exception.Message);
-                
             }
             return new OkResult();
         }
@@ -79,13 +79,43 @@ namespace AdvertApi.Controllers
         {
             var topicArn = _configuration.GetValue<string>("TopicArn");
             var dbModel = await _advertStorageService.GetByIdAsync(model.Id);
-            var message = new AdvertConfirmedMessage 
+            var message = new AdvertConfirmedMessage
             {
                 Id = model.Id,
                 Title = dbModel.Title
             };
             var messageJson = JsonConvert.SerializeObject(message);
             await _simpleNotificationService.PublishAsync(topicArn, messageJson);
+        }
+
+        [HttpGet]
+        [Route("{id}")]
+        [ProducesResponseType(404)]
+        [ProducesResponseType(200)]
+        public async Task<IActionResult> Get(string id)
+        {
+            try
+            {
+                var advert = await _advertStorageService.GetByIdAsync(id);
+                return new JsonResult(advert);
+            }
+            catch (KeyNotFoundException)
+            {
+                return new NotFoundResult();
+            }
+            catch (Exception)
+            {
+                return new StatusCodeResult(500);
+            }
+        }
+
+        [HttpGet]
+        [Route("all")]
+        [ProducesResponseType(200)]
+        [EnableCors("AllOrigin")]
+        public async Task<IActionResult> All()
+        {
+            return new JsonResult(await _advertStorageService.GetAllAsync());
         }
     }
 }

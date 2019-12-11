@@ -31,6 +31,10 @@ namespace AdvertApi
             services.AddTransient<StorageHealthCheck>();
             services.AddHealthChecks()
                     .AddCheck<StorageHealthCheck>("Storage");
+            services.AddCors(options =>
+            {
+                options.AddPolicy("AllOrigin", policy => policy.WithOrigins("*").AllowAnyHeader());
+            });
             services.AddRazorPages();
         }
 
@@ -43,7 +47,7 @@ namespace AdvertApi
             }
             //app.UseHealthChecks("/health");
             app.UseRouting();
-
+            app.UseCors();
             app.UseAuthorization();
             app.UseEndpoints(endpoints =>
             {

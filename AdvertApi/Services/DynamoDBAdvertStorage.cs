@@ -23,18 +23,16 @@ namespace AdvertApi.Services
         public async Task<string> AddAsync(AdvertModel model)
         {
             // add validation in production
-            var dbModel = _mapper.Map<AdvertDbModel>(model);
+            AdvertDbModel dbModel = _mapper.Map<AdvertDbModel>(model);
             dbModel.Id = new Guid().ToString();
             dbModel.CreationDateTime = DateTime.UtcNow;
             dbModel.Status = AdvertStatus.Pending;
 
-            using (var client = new AmazonDynamoDBClient())
+            using (var context = new DynamoDBContext(_client))
             {
-                using (var context = new DynamoDBContext(client))
-                {
-                    await context.SaveAsync(dbModel);
-                }
+                await context.SaveAsync(dbModel);
             }
+
             return dbModel.Id;
         }
 
@@ -48,50 +46,37 @@ namespace AdvertApi.Services
 
         public async Task ConfirmAsync(ConfirmAdvertModel model)
         {
-            using (var client = new AmazonDynamoDBClient())
+            DynamoDBContext context = new DynamoDBContext(_client);
+            var record = await context.LoadAsync<AdvertDbModel>(model.Id);
+            if (record == null)
             {
-                using (var context = new DynamoDBContext(client))
-                {
-                    var record = await context.LoadAsync<AdvertDbModel>(model.Id);
-                    if (record == null)
-                    {
-                        throw new KeyNotFoundException($"A record with ID={model.Id} was not found.");
-                    }
-                    if (model.Status == AdvertStatus.Active)
-                    {
-                        record.Status = AdvertStatus.Active;
-                        await context.SaveAsync(record);
-                    }
-                    else
-                    {
-                        await context.DeleteAsync(record);
-                    }
-                }
+                throw new KeyNotFoundException($"A record with ID={model.Id} was not found.");
+            }
+            if (model.Status == AdvertStatus.Active)
+            {
+                record.Status = AdvertStatus.Active;
+                await context.SaveAsync(record);
+            }
+            else
+            {
+                await context.DeleteAsync(record);
             }
         }
 
         public async Task<List<AdvertModel>> GetAllAsync()
         {
-            using (var client = new AmazonDynamoDBClient())
-            {
-                using (var context = new DynamoDBContext(client))
-                {
-                    var scanResult =
-                        await context.ScanAsync<AdvertDbModel>(new List<ScanCondition>()).GetNextSetAsync();
-                    return scanResult.Select(item => _mapper.Map<AdvertModel>(item)).ToList();
-                }
-            }
+            DynamoDBContext context = new DynamoDBContext(_client);
+            var scanResult =
+await context.ScanAsync<AdvertDbModel>(new List<ScanCondition>()).GetNextSetAsync();
+            return scanResult.Select(item => _mapper.Map<AdvertModel>(item)).ToList();
         }
 
         public async Task<AdvertModel> GetByIdAsync(string id)
         {
-            using (var client = new AmazonDynamoDBClient())
+            using (var context = new DynamoDBContext(_client))
             {
-                using (var context = new DynamoDBContext(client))
-                {
-                    var dbModel = await context.LoadAsync<AdvertDbModel>(id);
-                    if (dbModel != null) return _mapper.Map<AdvertModel>(dbModel);
-                }
+                var dbModel = await context.LoadAsync<AdvertDbModel>(id);
+                if (dbModel != null) return _mapper.Map<AdvertModel>(dbModel);
             }
 
             throw new KeyNotFoundException();
